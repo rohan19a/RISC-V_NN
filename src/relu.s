@@ -15,9 +15,10 @@
 relu:
     # Prologue
     lw t0 0(a0) #load the pointer to the first element
-    blt a1 x0 loop_end     #if the length of the array is less than 1, terminate the program
-    addi t1 a1 0
     li t2 1
+    blt a1 t2 error     #if the length of the array is less than 1, terminate the program
+    addi t1 a1 0
+    
 
 loop_start:
     blt t1 t2 loop_end     #if the length of the array is less than 1, terminate the program 
@@ -36,3 +37,6 @@ loop_continue:
 loop_end:
     # Epilogue
     jr ra
+error:
+    li a0 36
+    ecall

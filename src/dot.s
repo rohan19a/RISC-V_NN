@@ -26,28 +26,44 @@ dot:
     addi t3 a3 0 # stride of arr0
     addi t4 a4 0 # stride of arr1
 
-    blt t2 zero loop_end
+
+    addi t5 x0 36 # dot product
+    addi t6 x0 1
+
+    blt t2 t6 loop_end
+
+    addi t5 x0 37
+    blt t3 t6 loop_end
+    blt t4 t6 loop_end
 
     # Prologue
 
 
 loop_start:
 
+    mul t5 t0 t1
+    add a0 a0 t3
+    add a1 a1 t4
+    addi t2 t2 -1
 
+    blt t2 zero other_end
 
+    lw t0 0(a0)
+    lw t1 0(a1)
 
-
-
-
-
+    j loop_start
+    add a0 x0 t5
 
 
 
 
 loop_end:
 
-
     # Epilogue
 
 
+    jr ra
+
+other_end:
+    add a0 x0 t5
     jr ra

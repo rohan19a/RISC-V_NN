@@ -16,12 +16,12 @@
 # =================================================================
 argmax:
     # Prologue
-    lw t0, 0(a0)      # Load the first element of the array
     addi t1, a1 0       # Load the number of elements
     
     li t3, 0         # Initialize the index of the largest element to 0
     li t4, 0         # Initialize the value of the largest element to 0
     
+
     beq t1, x0, loop_end  # If array length < 1, terminate the program
     
     li t4, -2147483648   # Initialize t4 with the smallest possible value
@@ -47,3 +47,5 @@ loop_end:
     mv a0, t3         # Move the index of the largest element to a0
     
     jr ra             # Return to the calling function
+
+    
