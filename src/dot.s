@@ -45,8 +45,8 @@ loop_start:
 
     mul t5 t0 t1
 
-    addi a0 a0 t3
-    addi a1 a1 t4
+    add a0 a0 t3
+    add a1 a1 t4
 
     addi t2 t2 -1
 
