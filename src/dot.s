@@ -21,31 +21,36 @@ dot:
     lw t0 0(a0)
     lw t1 0(a1)
 
-
     addi t2 a2 0
-
 
     addi t3 a3 0 # stride of arr0
     addi t4 a4 0 # stride of arr1
 
+    addi t6 x0 4
+
+    mul t3 t3 t6
+    mul t4 t4 t6
+
     addi t5 x0 1
 
     #catch errors
-    blt a2 t5 error
     blt t3 t5 other_error
     blt t4 t5 other_error
+
+    blt a2 t5 error
 
     # Prologue
 
 loop_start:
 
     mul t5 t0 t1
-    add a0 a0 t3
-    add a1 a1 t4
+
+    addi a0 a0 t3
+    addi a1 a1 t4
 
     addi t2 t2 -1
 
-    blt t2 zero other_end
+    beq t2 x0 loop_end
 
     lw t0 0(a0)
     lw t1 0(a1)
@@ -53,13 +58,6 @@ loop_start:
     j loop_start
 
 loop_end:
-
-    # Epilogue
-
-
-    jr ra
-
-other_end:
     add a0 x0 t5
     jr ra
 
