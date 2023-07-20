@@ -3,97 +3,101 @@
 .text
 # ==============================================================================
 # FUNCTION: Allocates memory and reads in a binary file as a matrix of integers
-#
+#   If any file operation fails or doesn't read the proper number of bytes,
+#   exit the program with exit code 1.
 # FILE FORMAT:
 #   The first 8 bytes are two 4 byte ints representing the # of rows and columns
 #   in the matrix. Every 4 bytes afterwards is an element of the matrix in
 #   row-major order.
 # Arguments:
-#   a0 (char*) is the pointer to string representing the filename
-#   a1 (int*)  is a pointer to an integer, we will set it to the number of rows
-#   a2 (int*)  is a pointer to an integer, we will set it to the number of columns
+#   a0 is the pointer to string representing the filename
+#   a1 is a pointer to an integer, we will set it to the number of rows
+#   a2 is a pointer to an integer, we will set it to the number of columns
 # Returns:
-#   a0 (int*)  is the pointer to the matrix in memory
-# Exceptions:
-#   - If malloc returns an error,
-#     this function terminates the program with error code 26
-#   - If you receive an fopen error or eof,
-#     this function terminates the program with error code 27
-#   - If you receive an fclose error or eof,
-#     this function terminates the program with error code 28
-#   - If you receive an fread error or eof,
-#     this function terminates the program with error code 29
+#   a0 is the pointer to the matrix in memory
 # ==============================================================================
 read_matrix:
 
     # Prologue
-    addi sp, sp, -12         # Adjust stack pointer to make room for 3 words
-    sw ra, 0(sp)             # Save return address
-    sw a1, 4(sp)             # Save a1 (number of rows)
-    sw a2, 8(sp)             # Save a2 (number of columns)
+    addi sp, sp, -28
+    sw s0, 0(sp)                # the pointer to string representing the filename
+    sw s1, 4(sp)                # a pointer to the number of rows
+    sw s2, 8(sp)                # a pointer to the number of columns
+    sw s3, 12(sp)               # the file descriptor
+    sw s4, 16(sp)               # the pointer to the matrix in memory
+    sw s5, 20(sp)               # save the # of entries
+    sw ra, 24(sp)
 
-    # Open the file for reading
-    la t0, fopen             # Load address of fopen function
-    mv a0, a0                # Pass the filename pointer
-    li a1, 0                 # Mode: read-only
-    jalr t1, t0              # Call fopen
-    beqz t1, handle_error_27 # If fopen returns 0, handle error (code 27)
-    sw t1, 12(sp)            # Save file pointer for later use
+    add s0, a0, x0
+    add s1, a1, x0
+    add s2, a2, x0
 
-    # Read the dimensions (number of rows and columns)
-    lw t0, 4(sp)             # Load a1 (number of rows) from stack
-    lw t1, 8(sp)             # Load a2 (number of columns) from stack
-    li t2, 8                 # Number of bytes for dimensions (2 ints)
-    la t3, 0(t1)             # Load address of the dimensions variable
-    mv a0, t3                # Pass the dimensions variable address
-    li a1, 1                 # Size of each element (1 byte)
-    mv a2, t2                # Number of elements to read
-    la t4, fread             # Load address of fread function
-    lw a3, 12(sp)            # Load file pointer
-    jalr t0, t4              # Call fread
-    beqz t0, handle_error_29 # If fread returns 0, handle error (code 29)
+    add a1, s0, x0              # fopen("filename", "-r")
+    add a2, x0, x0
+    call fopen
+    addi t0, x0, -1
+    beq t0, a0, eof_or_error    # if file descriptor (fp) is -1: exit with exit code 1
 
-    # Allocate memory for the matrix
-    lw t0, 4(sp)             # Load a1 (number of rows) from stack
-    lw t1, 8(sp)             # Load a2 (number of columns) from stack
-    mul t0, t0, t1           # Calculate total number of elements (rows * columns)
-    li t1, 4                 # Number of bytes per element
-    mul t0, t0, t1           # Calculate total number of bytes
-    la t1, malloc            # Load address of malloc function
-    mv a0, t0                # Pass the number of bytes
-    jalr t2, t1              # Call malloc
-    beqz t2, handle_error_26 # If malloc returns 0, handle error (code 26)
-    sw t2, 16(sp)            # Save matrix pointer for later use
+    add s3, a0, x0
+    
+    add a1, s3, x0
+    add a2, s1, x0
+    addi a3, x0, 4
+    call fread                  # fread(fp, row, 4)
+    bne a0, a3, eof_or_error    # if a0 is NOT equal to a3: exit with exit code 1
 
-    # Read the matrix elements
-    lw t0, 16(sp)            # Load matrix pointer
-    la t1, 0(t0)             # Load address of the matrix
-    mv a0, t1                # Pass the matrix address
-    li a1, 1                 # Size of each element (1 byte)
-    lw a2, 4(sp)             # Load a1 (number of rows)
-    lw a3, 8(sp)             # Load a2 (number of columns)
-    la t2, fread             # Load address of fread function
-    lw a3, 12(sp)            # Load file pointer
-    jalr t0, t2              # Call fread
-    beqz t0, handle_error_29 # If fread returns 0, handle error (code 29)
+    lw t0, 0(s1)
+    blt t0, x0, eof_or_error
+
+    add a1, s3, x0
+    add a2, s2, x0
+    addi a3, x0, 4
+    call fread                  # fread(fp, column, 4)
+    bne a0, a3, eof_or_error    # if a0 is NOT equal to a3: exit with exit code 1
+
+    lw t0, 0(s2)
+    blt t0, x0, eof_or_error
+
+    lw t0, 0(s1)                # t0 <- row
+    lw t1, 0(s2)                # t1 <- column
+    mul a0, t0, t1              # a0 <- t0 * t1 (# of entries)
+    add s5, a0, x0              # save the # of entries
+    addi t0, x0, 4
+    mul a0, a0, t0
+    call malloc
+    beq a0, x0, eof_or_error    # if a pointer returned is NULL: exit with exit code 1
+
+    add s4, a0, x0              # save the returned pointer
+
+    add a1, s3, x0
+    add a2, s4, x0
+    lw t0, 0(s1)
+    lw t1, 0(s2)
+    mul a3, t0, t1
+    addi t0, x0, 4
+    mul a3, a3, t0
+    call fread
+    bne a0, a3, eof_or_error
+
+    add a1, s3, x0              # fclose(fp)
+    call fclose
+    bne a0, x0, eof_or_error
+
+    add a0, s4, x0
 
     # Epilogue
-    lw a0, 16(sp)            # Load matrix pointer as return value
-    lw ra, 0(sp)             # Restore return address
-    addi sp, sp, 12          # Adjust stack pointer
-    jr ra                    # Return
+    lw s0, 0(sp)
+    lw s1, 4(sp)
+    lw s2, 8(sp)
+    lw s3, 12(sp)
+    lw s4, 16(sp)
+    lw s5, 20(sp)
+    lw ra, 24(sp)
+    addi sp, sp, 28
 
-handle_error_26:
-    li a0, 26                # Error code 26 (malloc error)
-    j exit_program           # Jump to exit program
+    ret
 
-handle_error_27:
-    li a0, 27                # Error code 27 (fopen error or eof)
-    j exit_program           # Jump to exit program
-
-handle_error_29:
-    li a0, 29                # Error code 29 (fread error or eof)
-
-exit_program:
-    j exit                   # Terminate program
-              # Return to the caller
+eof_or_error:
+    li a1 1
+    jal exit2
+    
